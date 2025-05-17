@@ -1,107 +1,126 @@
-import React, { useEffect, useRef, useState } from "react";
+import React from "react";
 
-const Home = () => {
-  const [mode, setMode] = useState("countup");
-  const [value, setValue] = useState(0);
-  const [target, setTarget] = useState(null);
-  const [pausedAt, setPausedAt] = useState(null);
-  const intervalRef = useRef(null);
-  const startRef = useRef(null);
-  const alertedRef = useRef(false);
+class Home extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = {
+      seconds: 0,
+      mode: "countup",
+      target: null,
+      pausedAt: null,
+      alerted: false
+    };
+    this.interval = null;
+    this.startTime = null;
+  }
 
-  const startCount = (initial) => {
-    startRef.current = Date.now();
-    intervalRef.current = setInterval(() => {
-      const elapsed = Math.floor((Date.now() - startRef.current) / 1000);
-      if (mode === "countdown") {
+  componentDidMount() {
+    this.reset();
+  }
+
+  componentWillUnmount() {
+    clearInterval(this.interval);
+  }
+
+  startCount(initial) {
+    this.startTime = Date.now();
+    this.interval = setInterval(() => {
+      const elapsed = Math.floor((Date.now() - this.startTime) / 1000);
+      if (this.state.mode === "countdown") {
         const remaining = initial - elapsed;
         if (remaining <= 0) {
-          clearInterval(intervalRef.current);
-          setValue(0);
-          if (!alertedRef.current) {
+          clearInterval(this.interval);
+          this.setState({ seconds: 0 });
+          if (!this.state.alerted) {
             alert(`¡Tiempo alcanzado! (${initial} segundos)`);
-            alertedRef.current = true;
+            this.setState({ alerted: true });
           }
         } else {
-          setValue(remaining);
+          this.setState({ seconds: remaining });
         }
       } else {
-        setValue(initial + elapsed);
+        this.setState({ seconds: initial + elapsed });
       }
     }, 1000);
-  };
+  }
 
-  const handleStartCountdown = () => {
-    const input = document.getElementById("inputTime");
+  handleStartCountdown = () => {
+    const input = document.querySelector("#inputTime");
     const seconds = parseInt(input.value);
     if (isNaN(seconds) || seconds <= 0) {
       alert("Introduce un número válido mayor que 0");
       return;
     }
-
-    clearInterval(intervalRef.current);
-    setMode("countdown");
-    setTarget(seconds);
-    setValue(seconds);
-    alertedRef.current = false;
-    startCount(seconds);
+    clearInterval(this.interval);
+    this.setState(
+      {
+        seconds,
+        mode: "countdown",
+        target: seconds,
+        alerted: false
+      },
+      () => this.startCount(seconds)
+    );
   };
 
-  const pause = () => {
-    clearInterval(intervalRef.current);
-    const elapsed = Math.floor((Date.now() - startRef.current) / 1000);
-    setPausedAt(mode === "countdown" ? target - elapsed : value);
+  pause = () => {
+    clearInterval(this.interval);
+    const elapsed = Math.floor((Date.now() - this.startTime) / 1000);
+    const pausedValue =
+      this.state.mode === "countdown"
+        ? this.state.target - elapsed
+        : this.state.seconds;
+    this.setState({ pausedAt: pausedValue });
   };
 
-  const resume = () => {
-    if (pausedAt === null) return;
-    alertedRef.current = false;
-    startCount(pausedAt);
+  resume = () => {
+    if (this.state.pausedAt == null) return;
+    this.setState({ alerted: false }, () => {
+      this.startCount(this.state.pausedAt);
+    });
   };
 
-  const reset = () => {
-    clearInterval(intervalRef.current);
-    setPausedAt(null);
-    setTarget(null);
-    setMode("countup");
-    setValue(0);
-    startCount(0);
+  reset = () => {
+    clearInterval(this.interval);
+    this.setState(
+      {
+        seconds: 0,
+        mode: "countup",
+        pausedAt: null,
+        target: null,
+        alerted: false
+      },
+      () => this.startCount(0)
+    );
   };
 
-  useEffect(() => {
-    reset();
-    return () => clearInterval(intervalRef.current);
-  }, []);
+  render() {
+    const digits = this.state.seconds.toString().padStart(6, "0").split("");
 
-  const digits = value.toString().padStart(6, "0").split("");
-
-  return (
-    <>
-      <div className="main-container">
-        <div className="clock">
-          <i className="fas fa-clock"></i>
-        </div>
-        {digits.map((digit, index) => (
-          <div className="digit-box" key={index}>
-            {digit}
+    return (
+      <>
+        <div className="main-container">
+          <div className="clock">
+            <i className="fas fa-clock"></i>
           </div>
-        ))}
-      </div>
+          {digits.map((digit, index) => (
+            <div className="digit-box" key={index}>
+              {digit}
+            </div>
+          ))}
+        </div>
 
-      <div className="controls">
-        <input id="inputTime" type="number" placeholder="Tiempo (s)" />
-        <button onClick={handleStartCountdown}>Iniciar</button>
-        <button onClick={pause}>Parar</button>
-        <button onClick={resume}>Reanudar</button>
-        <button onClick={reset}>Reiniciar</button>
-      </div>
-    </>
-  );
-};
+        <div className="controls">
+          <input id="inputTime" type="number" placeholder="Tiempo (s)" />
+          <button onClick={this.handleStartCountdown}>Iniciar</button>
+          <button onClick={this.pause}>Parar</button>
+          <button onClick={this.resume}>Reanudar</button>
+          <button onClick={this.reset}>Reiniciar</button>
+        </div>
+      </>
+    );
+  }
+}
 
 export default Home;
-
-
-
-
 
